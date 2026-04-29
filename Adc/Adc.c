@@ -1,6 +1,7 @@
 #include "Adc.h"
 #include "Adc_Private.h"
 #include "Bit_Operations.h"
+#include "Timer.h"
 
 void ADC_Init(void) {
     // Enable EOC Interrupt (Bit 5 in CR1)
@@ -14,7 +15,6 @@ void ADC_Init(void) {
     ADC1->SQR3 &= ~(0x1FU << 0);
     
     // INCREASE SAMPLING TIME for Channel 0 to maximum (480 cycles)
-    // This gives the LM35 plenty of time to charge the internal ADC capacitor
     ADC1->SMPR2 |= (7U << 0); 
     
     // Enable ADC1 interrupt in NVIC (IRQ 18)
@@ -24,8 +24,7 @@ void ADC_Init(void) {
     SET_BIT(ADC1->CR2, 0); 
     
     // STABILIZATION DELAY (tSTAB)
-    // The ADC needs a few microseconds to power up before the first conversion
-    for(volatile int i = 0; i < 10000; i++); 
+    Timer_Delay_ms(1); 
 }
 
 void ADC_StartConversion(void) {

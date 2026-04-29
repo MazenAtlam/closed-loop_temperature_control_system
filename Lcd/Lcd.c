@@ -1,5 +1,6 @@
 #include "Lcd.h"
 #include "Gpio.h"
+#include "Timer.h"
 
 #define LCD_PORT PORTB
 #define LCD_RS   0
@@ -9,15 +10,11 @@
 #define LCD_D6   4
 #define LCD_D7   5
 
-static void delay_ms(uint32 ms) {
-    for (volatile uint32 i = 0; i < ms * 1600; i++);
-}
-
 static void LCD_Pulse(void) {
     GPIO_SetPinValue(LCD_PORT, LCD_EN, 1);
-    delay_ms(1);
+    Timer_Delay_ms(1);
     GPIO_SetPinValue(LCD_PORT, LCD_EN, 0);
-    delay_ms(1);
+    Timer_Delay_ms(1);
 }
 
 static void LCD_WriteHalf(uint8 value) {
@@ -41,11 +38,11 @@ void LCD_SendData(uint8 data) {
 }
 
 void LCD_Init(void) {
-    delay_ms(20);
+    Timer_Delay_ms(20);
     LCD_WriteHalf(0x03);
-    delay_ms(5);
+    Timer_Delay_ms(5);
     LCD_WriteHalf(0x03);
-    delay_ms(1);
+    Timer_Delay_ms(1);
     LCD_WriteHalf(0x03);
     LCD_WriteHalf(0x02); // Enable 4-bit mode
     
@@ -57,7 +54,7 @@ void LCD_Init(void) {
 
 void LCD_Clear(void) {
     LCD_SendCommand(0x01);
-    delay_ms(2);
+    Timer_Delay_ms(2);
 }
 
 void LCD_SetCursor(uint8 row, uint8 col) {

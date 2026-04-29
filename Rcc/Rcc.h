@@ -13,6 +13,7 @@ void RCC_EnablePeripheralClock(uint8 bus, uint8 peripheral);
 #define PERIPHERAL_GPIOA 0
 #define PERIPHERAL_GPIOB 1
 #define PERIPHERAL_GPIOC 2
+#define PERIPHERAL_TIM2  0
 #define PERIPHERAL_TIM3  1
 #define PERIPHERAL_ADC1  8
 

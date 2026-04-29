@@ -4,6 +4,7 @@
 #include "Adc.h"
 #include "Pwm.h"
 #include "Lcd.h"
+#include "Timer.h"
 
 typedef enum {
     STATE_IDLE,
@@ -68,6 +69,7 @@ int main(void) {
     RCC_EnablePeripheralClock(BUS_AHB1, PERIPHERAL_GPIOA);
     RCC_EnablePeripheralClock(BUS_AHB1, PERIPHERAL_GPIOB);
     RCC_EnablePeripheralClock(BUS_APB2, PERIPHERAL_ADC1);
+    RCC_EnablePeripheralClock(BUS_APB1, PERIPHERAL_TIM2);
     RCC_EnablePeripheralClock(BUS_APB1, PERIPHERAL_TIM3);
 
     // 2. Hardware Interfaces & Peripheral Configuration
@@ -94,6 +96,7 @@ int main(void) {
     GPIO_SetPinValue(PORTA, 4, 0);
 
     // 3. Driver Activations
+    Timer_Init(); // Must be initialized first for hardware delays
     LCD_Init();
     PWM_Init();
     ADC_Init();
