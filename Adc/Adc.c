@@ -3,11 +3,11 @@
 #include "Bit_Operations.h"
 
 void ADC_Init(void) {
-    // Enable EOC Interrupt
+    // Enable EOC Interrupt (Bit 5 in CR1)
     SET_BIT(ADC1->CR1, 5); 
     
-    // Set continuous conversion mode
-    SET_BIT(ADC1->CR2, 1); 
+    // Explicitly CLEAR Continuous conversion mode (Bit 1 in CR2) - Workaround applied
+    CLEAR_BIT(ADC1->CR2, 1); 
     
     // Set sequence length to 1 and sequence 1 to Channel 0
     ADC1->SQR1 &= ~(0xFU << 20);
@@ -16,12 +16,13 @@ void ADC_Init(void) {
     // Enable ADC1 interrupt in NVIC (IRQ 18)
     SET_BIT(NVIC_ISER0, 18);
     
-    // Turn on ADC
+    // Turn on ADC (Bit 0 in CR2)
     SET_BIT(ADC1->CR2, 0); 
 }
 
-void ADC_StartContinuous(void) {
-    SET_BIT(ADC1->CR2, 30); // Start conversion of regular channels
+void ADC_StartConversion(void) {
+    // Start conversion of regular channels (Bit 30 in CR2)
+    SET_BIT(ADC1->CR2, 30); 
 }
 
 uint16 ADC_ReadData(void) {

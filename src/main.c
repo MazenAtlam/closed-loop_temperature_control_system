@@ -1,3 +1,10 @@
+/**
+ * @file    main.c
+ * @author  Mazen Atlam 
+ * @brief   Project 3: The Auto-Cooler (Mealy State Machine Architecture)
+ * @team    sbe27_embedded_spring26_team##
+ */
+
 #include "Std_Types.h"
 #include "Rcc.h"
 #include "Gpio.h"
@@ -16,8 +23,12 @@ volatile uint8   new_reading_flag = 0;
 
 // Interrupt Service Routine for ADC1 EOC
 void ADC_IRQHandler(void) {
+    // 1. Read the data (this automatically clears the EOC flag)
     adc_reading = ADC_ReadData();
     new_reading_flag = 1;
+    
+    // 2. Restart the next conversion manually for continuous polling
+    ADC_StartConversion();
 }
 
 uint8 CalculateFanSpeed(uint32 temp_x10) {
@@ -80,7 +91,9 @@ int main(void) {
     LCD_Init();
     PWM_Init();
     ADC_Init();
-    ADC_StartContinuous(); // Start autonomous polling cycle
+    
+    // Start the first conversion (the ISR will trigger subsequent ones)
+    ADC_StartConversion(); 
 
     // 4. Mealy State Machine Variables
     SystemState_t current_state = STATE_IDLE;
