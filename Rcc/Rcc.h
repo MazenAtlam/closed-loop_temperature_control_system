@@ -1,6 +1,8 @@
 #ifndef RCC_H
 #define RCC_H
 
+#include "Std_Types.h"
+
 void RCC_Init(void);
 void RCC_EnablePeripheralClock(uint8 bus, uint8 peripheral);
 
