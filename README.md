@@ -83,3 +83,7 @@ This project utilizes a modular, bare-metal folder structure. All drivers are wr
 - `Rcc/`: Reset and Clock Control driver for peripheral clock gating and HSI initialization.
 - `Timer/`: Hardware timer driver (TIM2) used for precise, non-blocking delays and ADC polling pacing.
 - `src/main.c`: Contains the core Mealy State Machine and application logic.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
