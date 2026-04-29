@@ -83,8 +83,14 @@ int main(void) {
         GPIO_SetPinMode(PORTB, i, MODE_OUTPUT);
     }
 
-    // Dedicated Alarm LED (PA4)
-    GPIO_SetPinMode(PORTA, 4, MODE_OUTPUT);
+    // Indicator LEDs Initialization
+    GPIO_SetPinMode(PORTA, 2, MODE_OUTPUT); // IDLE LED
+    GPIO_SetPinMode(PORTA, 3, MODE_OUTPUT); // COOLING LED
+    GPIO_SetPinMode(PORTA, 4, MODE_OUTPUT); // OVERHEAT Alarm LED
+    
+    // Initial State is IDLE: Turn ON PA2, Turn OFF PA3 and PA4
+    GPIO_SetPinValue(PORTA, 2, 1);
+    GPIO_SetPinValue(PORTA, 3, 0);
     GPIO_SetPinValue(PORTA, 4, 0);
 
     // 3. Driver Activations
@@ -116,6 +122,10 @@ int main(void) {
                     if (temp_x10 >= 250) {
                         fan_speed = CalculateFanSpeed(temp_x10);
                         PWM_SetDutyCycle(fan_speed);
+                        
+                        // Transition to COOLING state outputs
+                        GPIO_SetPinValue(PORTA, 2, 0); // Turn OFF IDLE LED
+                        GPIO_SetPinValue(PORTA, 3, 1); // Turn ON COOLING LED
                         current_state = STATE_COOLING;
                     } else {
                         fan_speed = 0;
@@ -135,11 +145,18 @@ int main(void) {
                     if (temp_x10 < 250) {
                         fan_speed = 0;
                         PWM_SetDutyCycle(0);
+                        
+                        // Transition to IDLE state outputs
+                        GPIO_SetPinValue(PORTA, 3, 0); // Turn OFF COOLING LED
+                        GPIO_SetPinValue(PORTA, 2, 1); // Turn ON IDLE LED
                         current_state = STATE_IDLE;
                     } else if (temp_x10 >= 400) {
                         fan_speed = 100;
                         PWM_SetDutyCycle(100);
-                        GPIO_SetPinValue(PORTA, 4, 1); // Assert Alarm LED
+                        
+                        // Transition to OVERHEAT state outputs
+                        GPIO_SetPinValue(PORTA, 3, 0); // Turn OFF COOLING LED
+                        GPIO_SetPinValue(PORTA, 4, 1); // Turn ON OVERHEAT LED
                         current_state = STATE_OVERHEAT;
                     } else {
                         fan_speed = CalculateFanSpeed(temp_x10);
@@ -161,9 +178,12 @@ int main(void) {
 
                 case STATE_OVERHEAT:
                     if (temp_x10 < 400) {
-                        GPIO_SetPinValue(PORTA, 4, 0); // Clear Alarm LED
                         fan_speed = CalculateFanSpeed(temp_x10);
                         PWM_SetDutyCycle(fan_speed);
+                        
+                        // Transition to COOLING state outputs
+                        GPIO_SetPinValue(PORTA, 4, 0); // Turn OFF OVERHEAT LED
+                        GPIO_SetPinValue(PORTA, 3, 1); // Turn ON COOLING LED
                         
                         LCD_SetCursor(1, 0);
                         LCD_PrintString("               "); // Clear overheat warning
