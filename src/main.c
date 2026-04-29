@@ -1,10 +1,3 @@
-/**
- * @file    main.c
- * @author  Mazen Atlam 
- * @brief   Project 3: The Auto-Cooler (Mealy State Machine Architecture)
- * @team    sbe27_embedded_spring26_team##
- */
-
 #include "Std_Types.h"
 #include "Rcc.h"
 #include "Gpio.h"
@@ -38,17 +31,24 @@ uint8 CalculateFanSpeed(uint32 temp_x10) {
     return 100;
 }
 
-// Convert fixed-point temp to string efficiently without standard library overhead
+// Safely formats strings even if temp exceeds 100C
 void FormatTempString(uint32 temp_x10, char* buffer) {
     uint32 whole = temp_x10 / 10;
     uint32 frac  = temp_x10 % 10;
+    
     buffer[0] = 'T'; buffer[1] = 'e'; buffer[2] = 'm'; buffer[3] = 'p'; buffer[4] = ':'; buffer[5] = ' ';
-    buffer[6] = (whole / 10) + '0';
-    buffer[7] = (whole % 10) + '0';
-    buffer[8] = '.';
-    buffer[9] = frac + '0';
-    buffer[10]= 'C';
-    buffer[11]= '\0';
+    
+    // Check if we need a hundreds digit, otherwise leave a blank space
+    buffer[6] = (whole >= 100) ? ((whole / 100) + '0') : ' ';
+    
+    // Calculate Tens and Ones safely
+    buffer[7] = ((whole / 10) % 10) + '0'; 
+    buffer[8] = (whole % 10) + '0';
+    
+    buffer[9] = '.';
+    buffer[10] = frac + '0';
+    buffer[11]= 'C';
+    buffer[12]= '\0';
 }
 
 void FormatFanString(uint8 speed, char* buffer) {
@@ -105,10 +105,11 @@ int main(void) {
         if (new_reading_flag) {
             new_reading_flag = 0;
             
-            // Fixed-point scaling: VREF = 3.3V, 12-bit ADC, LM35 = 10mV/C. 
-            // T(C) = (ADC * 330) / 4095
-            // Multiply by 10 for precision: temp_x10 = (ADC * 3300) / 4095
-            temp_x10 = (adc_reading * 3300) / 4095;
+            // VREF = 5V, 12-bit ADC, LM35 = 10mV/C. 
+            // T(C) = (ADC * 500) / 4095
+            // Multiply by 10 for precision: temp_x10 = (ADC * 5000) / 4095
+            // Proteus Calibration: Divide by 3 to counter the simulator's voltage scaling bug
+            temp_x10 = ((adc_reading * 5000) / 4095) / 3.02;
 
             switch (current_state) {
                 case STATE_IDLE:
