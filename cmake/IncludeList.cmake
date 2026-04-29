@@ -4,6 +4,17 @@ set(INCLUDE_LIST ${INCLUDE_LIST}
         ${PROJECT_PATH}/STM32-base-STM32Cube/CMSIS/ARM/inc
         ${PROJECT_PATH}/STM32-base-STM32Cube/CMSIS/${SERIES_FOLDER}/inc
         ${PROJECT_PATH}/include
+        
+        # --- Custom Project Modules ---
+        ${PROJECT_PATH}/Lib
+        ${PROJECT_PATH}/Rcc
+        ${PROJECT_PATH}/Gpio
+        ${PROJECT_PATH}/Exti
+        ${PROJECT_PATH}/Pwm
+        ${PROJECT_PATH}/Timer
+        ${PROJECT_PATH}/Adc
+        ${PROJECT_PATH}/Usart
+        ${PROJECT_PATH}/Lcd
 )
 
 if (USE_HAL)
