@@ -52,13 +52,23 @@ void FormatTempString(uint32 temp_x10, char* buffer) {
 
 void FormatFanString(uint8 speed, char* buffer) {
     buffer[0] = 'F'; buffer[1] = 'a'; buffer[2] = 'n'; buffer[3] = ':'; buffer[4] = ' ';
+    uint8 idx = 0;
+    
     if (speed == 100) {
-        buffer[5] = '1'; buffer[6] = '0'; buffer[7] = '0'; buffer[8] = '%'; buffer[9] = '\0';
+        buffer[5] = '1'; buffer[6] = '0'; buffer[7] = '0'; buffer[8] = '%'; 
+        idx = 9;
     } else {
         buffer[5] = (speed / 10) + '0';
         buffer[6] = (speed % 10) + '0';
-        buffer[7] = '%'; buffer[8] = ' '; buffer[9] = '\0';
+        buffer[7] = '%'; 
+        idx = 8;
     }
+    
+    // Pad the remainder of the line with spaces
+    while (idx < 15) {
+        buffer[idx++] = ' ';
+    }
+    buffer[15] = '\0';
 }
 
 int main(void) {
@@ -105,114 +115,114 @@ int main(void) {
     uint8  fan_speed = 0;
     char   str_buffer[16];
 
+    // Start the first conversion to kick off the cycle
+    ADC_StartConversion(); 
+
     while (1) {
-        // Trigger a new ADC conversion
-        ADC_StartConversion(); 
-        
-        // Block until the ISR sets the flag
-        while (!new_reading_flag);
-        
-        // Reset the flag for the next cycle
-        new_reading_flag = 0;
-        
-        // VREF = 5V, 12-bit ADC, LM35 = 10mV/C. 
-        // T(C) = (ADC * 500) / 4095
-        // Multiply by 10 for precision: temp_x10 = (ADC * 5000) / 4095
-        // Proteus Calibration: Divide by 3 to counter the simulator's voltage scaling bug
-        temp_x10 = ((adc_reading * 5000) / 4095) / 3.02;
+        // Only execute if the ISR has provided fresh data (No CPU polling loops!)
+        if (new_reading_flag) {
+            new_reading_flag = 0;
+            
+            // VREF = 5V, 12-bit ADC, LM35 = 10mV/C. 
+            // T(C) = (ADC * 500) / 4095
+            // Multiply by 10 for precision: temp_x10 = (ADC * 5000) / 4095
+            // Proteus Calibration: Divide by 3 to counter the simulator's voltage scaling bug
+            temp_x10 = ((adc_reading * 5000) / 4095) / 3.02;
 
-        switch (current_state) {
-            case STATE_IDLE:
-                if (temp_x10 >= 250) {
-                    fan_speed = CalculateFanSpeed(temp_x10);
-                    PWM_SetDutyCycle(fan_speed);
+            switch (current_state) {
+                case STATE_IDLE:
+                    if (temp_x10 >= 250) {
+                        fan_speed = CalculateFanSpeed(temp_x10);
+                        PWM_SetDutyCycle(fan_speed);
+                        
+                        // Transition to COOLING state outputs
+                        GPIO_SetPinValue(PORTA, 2, 0); // Turn OFF IDLE LED
+                        GPIO_SetPinValue(PORTA, 3, 1); // Turn ON COOLING LED
+                        current_state = STATE_COOLING;
+                    } else {
+                        fan_speed = 0;
+                        PWM_SetDutyCycle(0);
+                    }
                     
-                    // Transition to COOLING state outputs
-                    GPIO_SetPinValue(PORTA, 2, 0); // Turn OFF IDLE LED
-                    GPIO_SetPinValue(PORTA, 3, 1); // Turn ON COOLING LED
-                    current_state = STATE_COOLING;
-                } else {
-                    fan_speed = 0;
-                    PWM_SetDutyCycle(0);
-                }
-                
-                // Output Update
-                LCD_SetCursor(0, 0);
-                FormatTempString(temp_x10, str_buffer);
-                LCD_PrintString(str_buffer);
-                LCD_SetCursor(1, 0);
-                FormatFanString(fan_speed, str_buffer);
-                LCD_PrintString(str_buffer);
-                break;
-
-            case STATE_COOLING:
-                if (temp_x10 < 250) {
-                    fan_speed = 0;
-                    PWM_SetDutyCycle(0);
-                    
-                    // Transition to IDLE state outputs
-                    GPIO_SetPinValue(PORTA, 3, 0); // Turn OFF COOLING LED
-                    GPIO_SetPinValue(PORTA, 2, 1); // Turn ON IDLE LED
-                    current_state = STATE_IDLE;
-                } else if (temp_x10 >= 400) {
-                    fan_speed = 100;
-                    PWM_SetDutyCycle(100);
-                    
-                    // Transition to OVERHEAT state outputs
-                    GPIO_SetPinValue(PORTA, 3, 0); // Turn OFF COOLING LED
-                    GPIO_SetPinValue(PORTA, 4, 1); // Turn ON OVERHEAT LED
-                    current_state = STATE_OVERHEAT;
-                } else {
-                    fan_speed = CalculateFanSpeed(temp_x10);
-                    PWM_SetDutyCycle(fan_speed);
-                }
-
-                // Output Update
-                LCD_SetCursor(0, 0);
-                FormatTempString(temp_x10, str_buffer);
-                LCD_PrintString(str_buffer);
-                LCD_SetCursor(1, 0);
-                if (current_state == STATE_OVERHEAT) {
-                    LCD_PrintString("OVERHEAT       ");
-                } else {
-                    FormatFanString(fan_speed, str_buffer);
+                    // Output Update
+                    LCD_SetCursor(0, 0);
+                    FormatTempString(temp_x10, str_buffer);
                     LCD_PrintString(str_buffer);
-                }
-                break;
-
-            case STATE_OVERHEAT:
-                if (temp_x10 < 400) {
-                    fan_speed = CalculateFanSpeed(temp_x10);
-                    PWM_SetDutyCycle(fan_speed);
-                    
-                    // Transition to COOLING state outputs
-                    GPIO_SetPinValue(PORTA, 4, 0); // Turn OFF OVERHEAT LED
-                    GPIO_SetPinValue(PORTA, 3, 1); // Turn ON COOLING LED
-                    
-                    LCD_SetCursor(1, 0);
-                    LCD_PrintString("               "); // Clear overheat warning
-                    current_state = STATE_COOLING;
-                } else {
-                    fan_speed = 100;
-                    PWM_SetDutyCycle(100);
-                }
-
-                // Output Update
-                LCD_SetCursor(0, 0);
-                FormatTempString(temp_x10, str_buffer);
-                LCD_PrintString(str_buffer);
-                if (current_state == STATE_OVERHEAT) {
-                    LCD_SetCursor(1, 0);
-                    LCD_PrintString("OVERHEAT       ");
-                } else {
                     LCD_SetCursor(1, 0);
                     FormatFanString(fan_speed, str_buffer);
                     LCD_PrintString(str_buffer);
-                }
-                break;
+                    break;
+
+                case STATE_COOLING:
+                    if (temp_x10 < 250) {
+                        fan_speed = 0;
+                        PWM_SetDutyCycle(0);
+                        
+                        // Transition to IDLE state outputs
+                        GPIO_SetPinValue(PORTA, 3, 0); // Turn OFF COOLING LED
+                        GPIO_SetPinValue(PORTA, 2, 1); // Turn ON IDLE LED
+                        current_state = STATE_IDLE;
+                    } else if (temp_x10 >= 400) {
+                        fan_speed = 100;
+                        PWM_SetDutyCycle(100);
+                        
+                        // Transition to OVERHEAT state outputs
+                        GPIO_SetPinValue(PORTA, 3, 0); // Turn OFF COOLING LED
+                        GPIO_SetPinValue(PORTA, 4, 1); // Turn ON OVERHEAT LED
+                        current_state = STATE_OVERHEAT;
+                    } else {
+                        fan_speed = CalculateFanSpeed(temp_x10);
+                        PWM_SetDutyCycle(fan_speed);
+                    }
+
+                    // Output Update
+                    LCD_SetCursor(0, 0);
+                    FormatTempString(temp_x10, str_buffer);
+                    LCD_PrintString(str_buffer);
+                    LCD_SetCursor(1, 0);
+                    if (current_state == STATE_OVERHEAT) {
+                        LCD_PrintString("OVERHEAT       ");
+                    } else {
+                        FormatFanString(fan_speed, str_buffer);
+                        LCD_PrintString(str_buffer);
+                    }
+                    break;
+
+                case STATE_OVERHEAT:
+                    if (temp_x10 < 400) {
+                        fan_speed = CalculateFanSpeed(temp_x10);
+                        PWM_SetDutyCycle(fan_speed);
+                        
+                        // Transition to COOLING state outputs
+                        GPIO_SetPinValue(PORTA, 4, 0); // Turn OFF OVERHEAT LED
+                        GPIO_SetPinValue(PORTA, 3, 1); // Turn ON COOLING LED
+
+                        current_state = STATE_COOLING;
+                    } else {
+                        fan_speed = 100;
+                        PWM_SetDutyCycle(100);
+                    }
+
+                    // Output Update
+                    LCD_SetCursor(0, 0);
+                    FormatTempString(temp_x10, str_buffer);
+                    LCD_PrintString(str_buffer);
+                    if (current_state == STATE_OVERHEAT) {
+                        LCD_SetCursor(1, 0);
+                        LCD_PrintString("OVERHEAT       ");
+                    } else {
+                        LCD_SetCursor(1, 0);
+                        FormatFanString(fan_speed, str_buffer);
+                        LCD_PrintString(str_buffer);
+                    }
+                    break;
+            }
+
+            // Pacing delay to prevent LCD ghosting and hardware glitches
+            Timer_Delay_ms(100); 
+
+            // Trigger the NEXT conversion here, allowing the CPU to be free
+            ADC_StartConversion(); 
         }
-
-        // Hardware delay to pace the ADC polling
-        Timer_Delay_ms(100); 
     }
 }
