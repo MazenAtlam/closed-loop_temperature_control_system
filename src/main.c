@@ -29,7 +29,7 @@ uint8 CalculateFanSpeed(uint32 temp_x10) {
     return 100;
 }
 
-// Safely formats strings even if temp exceeds 100C
+// Safely formats strings
 void FormatTempString(uint32 temp_x10, char* buffer) {
     uint32 whole = temp_x10 / 10;
     uint32 frac  = temp_x10 % 10;
@@ -45,8 +45,9 @@ void FormatTempString(uint32 temp_x10, char* buffer) {
     
     buffer[9] = '.';
     buffer[10] = frac + '0';
-    buffer[11]= 'C';
-    buffer[12]= '\0';
+    buffer[11] = 0xDF; // LCD hardware degree symbol '°'
+    buffer[12] = 'C';
+    buffer[13] = '\0'; // Shifted null terminator
 }
 
 void FormatFanString(uint8 speed, char* buffer) {
@@ -212,6 +213,6 @@ int main(void) {
         }
 
         // Hardware delay to pace the ADC polling
-        Timer_Delay_ms(10); 
+        Timer_Delay_ms(100); 
     }
 }
